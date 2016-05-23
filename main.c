@@ -2,6 +2,8 @@
 #include <stdlib.h> // malloc ...
 #include <string.h> // strlen() ...
 #include <stdint.h> // uint32_t ...
+#include <unistd.h> // getopt
+#include <stdbool.h>
 
 #include "cencode.h"
 #include "cdecode.h"
@@ -13,10 +15,12 @@ static char* encode(const char*);
 static char* decode(const char*);
 static char* xor(const char*);
 
-// Encodes the input string to base64 and returns it as a null terminated string
-// of characters. The returned string is created on the heap, so needs to be
-// free()'d manually.
+// Encode will convert every character in the input string with the magic number,
+// then encode it to base64. The returned character string is created on the heap,
+// and needs to be freed manually.
 static char* encode(const char* input) {
+	char* xored = xor(input);
+
 	// Allocate output buffer
 	char* output = malloc(ENCODE_SIZE * sizeof(char));
 	// c points to the start of the 'output' string.
@@ -27,17 +31,19 @@ static char* encode(const char* input) {
 	// Beginning of encoding.
 	base64_init_encodestate(&state);
 	// Somehow, using 'c' fills 'output'?
-	c += base64_encode_block(input, strlen(input), c, &state);
+	c += base64_encode_block(xored, strlen(xored), c, &state);
 	c += base64_encode_blockend(c, &state);
 
 	*c = 0;
 
+	free(xored);
+
 	return output;
 }
 
-// Decodes the input string to base64 and returns it as a null terminated string
-// of characters. The returned string is created on the heap, so needs to be
-// free()'d manually.
+// Decode will decode the input string from base64, then convert every character
+// with the magic number. The returned string is created on the heap, and needs
+// to be freed manually.
 static char* decode(const char* input) {
 	char* output = malloc(ENCODE_SIZE * sizeof(char));
 	char* ptr_output = output;
@@ -50,9 +56,14 @@ static char* decode(const char* input) {
 	ptr_output += cnt;
 	*ptr_output = '\0';
 
-	return output;
+	char* xored = xor(output);
+
+	free(output);
+
+	return xored;
 }
 
+// Will xor every character in the input string with the magic number.
 static char* xor(const char* input) {
 	char* cruft = malloc(ENCODE_SIZE * sizeof(char));
 	for (int i = 0; i < strlen(input); i++) {
@@ -63,23 +74,76 @@ static char* xor(const char* input) {
 	return cruft;
 }
 
+// Prints help to the standard out.
+static void printhelp() {
+	printf("Usage: xor [-e,-d|-h]\n");
+	printf("Encodes or decodes Websphere obfuscated strings.\n");
+	printf("\n");
+	printf("  -h          prints this help and exits\n");
+	printf("  -e STRING   encodes the given string\n");
+	printf("  -d STRING   decodes the given string\n");
+	printf("\n");
+	printf("Examples:\n");
+	printf("\n");
+	printf("$ xor -e \"hello world\"\n");
+	printf("hello world: NzozMzB/KDAtMzs=\n");
+	printf("$ xor -d \"NzozMzB/KDAtMzs=\"\n");
+	printf("NzozMzB/KDAtMzs=: hello world\n");
+	printf("\n");
+	printf("Full source and docs at <http://github.com/krpors/xor>\n");
+}
+
 int main(int argc, char* argv[]) {
-	char* str = "hello world";
-	char* xored = xor(str);
-	char* encoded = encode(xored);
+	int opt = -1;
+	char* enc = NULL;
+	char* dec = NULL;
+	bool help = false;
+	int errcount = 0;
 
-	char* a = decode(encoded);
-	char* b = xor(a);
+	opterr = 0;
+	while ((opt = getopt(argc, argv, ":e:d:h")) != -1) {
+		switch (opt) {
+		case 'e':
+			enc = optarg;
+			break;
+		case 'd':
+			dec = optarg;
+			break;
+		case 'h':
+			help = true;
+			break;
+		case ':':
+			// option requires operand, but none given.
+			fprintf(stderr, "error: option -%c requires operand\n", optopt);
+			errcount++;
+			break;
+		case '?':
+			fprintf(stderr, "error: unrecognized option: -%c\n", optopt);
+			errcount++;
+			break;
+		}
+	}
 
-	printf("%s xored is '%s'\n", str, xored);
-	printf("%s encoded is '%s'\n", str, encoded);
-	printf("%s decoded is '%s'\n", encoded, a);
-	printf("%s xored is '%s'\n", a, b);
+	if (errcount > 0) {
+		exit(EXIT_FAILURE);
+	}
 
-	free(encoded);
-	free(xored);
-	free(a);
-	free(b);
+	if (help) {
+		printhelp();
+		exit(EXIT_SUCCESS);
+	}
 
-	return 0;
+	if (enc != NULL) {
+		char* a = encode(enc);
+		printf("%s: %s\n", enc, a);
+		free(a);
+	}
+
+	if (dec != NULL) {
+		char* a = decode(dec);
+		printf("%s: %s\n", dec, a);
+		free(a);
+	}
+
+	exit(EXIT_SUCCESS);
 }
