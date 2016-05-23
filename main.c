@@ -9,6 +9,10 @@
 static const uint16_t ENCODE_SIZE = 1024; // arbitrary buffer size to encode/decode.
 static const uint32_t MAGIC       = 0x5f; // magic constant for xoring characters.
 
+static char* encode(const char*);
+static char* decode(const char*);
+static char* xor(const char*);
+
 // Encodes the input string to base64 and returns it as a null terminated string
 // of characters. The returned string is created on the heap, so needs to be
 // free()'d manually.
@@ -36,6 +40,15 @@ static char* encode(const char* input) {
 // free()'d manually.
 static char* decode(const char* input) {
 	char* output = malloc(ENCODE_SIZE * sizeof(char));
+	char* ptr_output = output;
+
+	base64_decodestate state;
+
+	// Beginning of encoding.
+	base64_init_decodestate(&state);
+	int cnt = base64_decode_block(input, strlen(input), output, &state);
+	ptr_output += cnt;
+	*ptr_output = '\0';
 
 	return output;
 }
@@ -51,16 +64,22 @@ static char* xor(const char* input) {
 }
 
 int main(int argc, char* argv[]) {
-	char* str = "kevin pors";
+	char* str = "hello world";
 	char* xored = xor(str);
 	char* encoded = encode(xored);
-	char* decoded = decode(encoded);
 
-	printf("%s encoded is %s\n", str, encoded);
-	printf("%s decoded is %s\n", encoded, decoded);
+	char* a = decode(encoded);
+	char* b = xor(a);
+
+	printf("%s xored is '%s'\n", str, xored);
+	printf("%s encoded is '%s'\n", str, encoded);
+	printf("%s decoded is '%s'\n", encoded, a);
+	printf("%s xored is '%s'\n", a, b);
 
 	free(encoded);
-	free(decoded);
+	free(xored);
+	free(a);
+	free(b);
 
 	return 0;
 }
