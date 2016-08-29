@@ -68,21 +68,21 @@ static void xor(char* dst, const char* src) {
 
 // Prints help to the standard out.
 static void printhelp() {
-	printf("Usage: xor [-e,-d|-h]\n");
-	printf("Encodes or decodes Websphere obfuscated strings.\n");
-	printf("\n");
-	printf("  -h          prints this help and exits\n");
-	printf("  -e STRING   encodes the given string\n");
-	printf("  -d STRING   decodes the given string\n");
-	printf("\n");
-	printf("Examples:\n");
-	printf("\n");
-	printf("$ xor -e \"hello world\"\n");
-	printf("hello world: NzozMzB/KDAtMzs=\n");
-	printf("$ xor -d \"NzozMzB/KDAtMzs=\"\n");
-	printf("NzozMzB/KDAtMzs=: hello world\n");
-	printf("\n");
-	printf("Full source and docs at <http://github.com/krpors/xor>\n");
+	printf("Usage: xor [-e,-d|-h]\n"
+	       "Encodes or decodes Websphere obfuscated strings.\n"
+	       "\n"
+	       "  -h          prints this help and exits\n"
+	       "  -e STRING   encodes the given string\n"
+	       "  -d STRING   decodes the given string\n"
+	       "\n"
+	       "Examples:\n"
+	       "\n"
+	       "$ xor -e \"hello world\"\n"
+	       "hello world: NzozMzB/KDAtMzs=\n"
+	       "$ xor -d \"NzozMzB/KDAtMzs=\"\n"
+	       "NzozMzB/KDAtMzs=: hello world\n"
+	       "\n"
+	       "Full source and docs at <http://github.com/krpors/xor>\n");
 }
 
 int main(int argc, char* argv[]) {
