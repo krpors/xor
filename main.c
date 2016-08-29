@@ -11,67 +11,59 @@
 static const uint16_t ENCODE_SIZE = 1024; // arbitrary buffer size to encode/decode.
 static const uint32_t MAGIC       = 0x5f; // magic constant for xoring characters.
 
-static char* encode(const char*);
-static char* decode(const char*);
-static char* xor(const char*);
+static void encode(char* src, const char* dst);
+static void decode(char* src, const char* dst);
+static void    xor(char* dst, const char* src);
 
-// Encode will convert every character in the input string with the magic number,
-// then encode it to base64. The returned character string is created on the heap,
-// and needs to be freed manually.
-static char* encode(const char* input) {
-	char* xored = xor(input);
-
-	// Allocate output buffer
-	char* output = malloc(ENCODE_SIZE * sizeof(char));
-	// c points to the start of the 'output' string.
-	char* c = output;
+/*
+ * encode will encode the src string into dst by xoring every character with
+ * the magic number, then converted to base64.
+ */
+static void encode(char* dst, const char* src) {
+	char* xored = malloc(ENCODE_SIZE * sizeof(char));
+	xor(xored, src);
 
 	base64_encodestate state;
 
 	// Beginning of encoding.
 	base64_init_encodestate(&state);
-	// Somehow, using 'c' fills 'output'?
-	c += base64_encode_block(xored, strlen(xored), c, &state);
-	c += base64_encode_blockend(c, &state);
+	// Using dst to up the pointer location.
+	dst += base64_encode_block(xored, strlen(xored), dst, &state);
+	dst += base64_encode_blockend(dst, &state);
 
-	*c = 0;
+	*dst = 0;
 
 	free(xored);
-
-	return output;
 }
 
-// Decode will decode the input string from base64, then convert every character
-// with the magic number. The returned string is created on the heap, and needs
-// to be freed manually.
-static char* decode(const char* input) {
-	char* output = malloc(ENCODE_SIZE * sizeof(char));
-	char* ptr_output = output;
+/*
+ * decode will decode the src string into dst by first decoding base64,
+ * then xoring every character with the magic number.
+ */
+static void decode(char* dst, const char* src) {
+	char* decoded = malloc(ENCODE_SIZE * sizeof(char));
+	char* ptr_dec = decoded; // TODO: why do I need an explicit pointer to the `decoded' string?
 
 	base64_decodestate state;
-
-	// Beginning of encoding.
+	// Beginning of decoding.
 	base64_init_decodestate(&state);
-	int cnt = base64_decode_block(input, strlen(input), output, &state);
-	ptr_output += cnt;
-	*ptr_output = '\0';
+	int cnt = base64_decode_block(src, strlen(src), decoded, &state);
+	ptr_dec += cnt;
+	*ptr_dec = '\0';
 
-	char* xored = xor(output);
+	xor(dst, decoded);
 
-	free(output);
-
-	return xored;
+	free(decoded);
 }
 
-// Will xor every character in the input string with the magic number.
-static char* xor(const char* input) {
-	char* cruft = malloc(ENCODE_SIZE * sizeof(char));
-	for (int i = 0; i < strlen(input); i++) {
-		cruft[i] = input[i] ^ MAGIC;
+static void xor(char* dst, const char* src) {
+	// iterate over all chars in 'input', xor it with the magic number into dst.
+	int i = 0;
+	for (; src[i]; i++) {
+		dst[i] = src[i] ^ MAGIC;
 	}
-	cruft[strlen(input)] = '\0'; // terminating null byte.
-
-	return cruft;
+	// Redundant if dst is large enough, but be sure we add a terminating null byte.
+	dst[i] = '\0';
 }
 
 // Prints help to the standard out.
@@ -134,15 +126,17 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (enc != NULL) {
-		char* a = encode(enc);
-		printf("%s: %s\n", enc, a);
-		free(a);
+		char* encoded = malloc(ENCODE_SIZE * sizeof(char));
+		encode(encoded, enc);
+		printf("%s: %s\n", enc, encoded);
+		free(encoded);
 	}
 
 	if (dec != NULL) {
-		char* a = decode(dec);
-		printf("%s: %s\n", dec, a);
-		free(a);
+		char* decoded = malloc(ENCODE_SIZE * sizeof(char));
+		decode(decoded, dec);
+		printf("%s: %s\n", dec, decoded);
+		free(decoded);
 	}
 
 	exit(EXIT_SUCCESS);
