@@ -1,8 +1,8 @@
-#include <stdio.h> // printf ...
-#include <stdlib.h> // malloc ...
-#include <string.h> // strlen() ...
-#include <stdint.h> // uint32_t ...
-#include <unistd.h> // getopt
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <getopt.h>
 #include <stdbool.h>
 
 #include "cencode.h"
@@ -20,7 +20,8 @@ static void    xor(char* dst, const char* src);
  * the magic number, then converted to base64.
  */
 static void encode(char* dst, const char* src) {
-	char* xored = malloc(ENCODE_SIZE * sizeof(char));
+	char xored[ENCODE_SIZE];
+
 	xor(xored, src);
 
 	base64_encodestate state;
@@ -32,8 +33,6 @@ static void encode(char* dst, const char* src) {
 	dst += base64_encode_blockend(dst, &state);
 
 	*dst = 0;
-
-	free(xored);
 }
 
 /*
@@ -41,19 +40,18 @@ static void encode(char* dst, const char* src) {
  * then xoring every character with the magic number.
  */
 static void decode(char* dst, const char* src) {
-	char* decoded = malloc(ENCODE_SIZE * sizeof(char));
-	char* ptr_dec = decoded; // TODO: why do I need an explicit pointer to the `decoded' string?
+	char decoded[ENCODE_SIZE];
+	char* ptr_dec = decoded;
 
 	base64_decodestate state;
 	// Beginning of decoding.
 	base64_init_decodestate(&state);
-	int cnt = base64_decode_block(src, strlen(src), decoded, &state);
+	int cnt = base64_decode_block(src, strlen(src), ptr_dec, &state);
+	printf("decoded to %d bytes\n", cnt);
 	ptr_dec += cnt;
 	*ptr_dec = '\0';
 
 	xor(dst, decoded);
-
-	free(decoded);
 }
 
 static void xor(char* dst, const char* src) {
@@ -92,7 +90,6 @@ int main(int argc, char* argv[]) {
 	bool help = false;
 	int errcount = 0;
 
-	opterr = 0;
 	while ((opt = getopt(argc, argv, ":e:d:h")) != -1) {
 		switch (opt) {
 		case 'e':
@@ -126,17 +123,15 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (enc != NULL) {
-		char* encoded = malloc(ENCODE_SIZE * sizeof(char));
+		char encoded[ENCODE_SIZE];
 		encode(encoded, enc);
 		printf("%s: %s\n", enc, encoded);
-		free(encoded);
 	}
 
 	if (dec != NULL) {
-		char* decoded = malloc(ENCODE_SIZE * sizeof(char));
+		char decoded[ENCODE_SIZE];
 		decode(decoded, dec);
 		printf("%s: %s\n", dec, decoded);
-		free(decoded);
 	}
 
 	exit(EXIT_SUCCESS);
