@@ -47,7 +47,6 @@ static void decode(char* dst, const char* src) {
 	// Beginning of decoding.
 	base64_init_decodestate(&state);
 	int cnt = base64_decode_block(src, strlen(src), ptr_dec, &state);
-	printf("decoded to %d bytes\n", cnt);
 	ptr_dec += cnt;
 	*ptr_dec = '\0';
 
